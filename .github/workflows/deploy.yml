@@ -29,11 +29,23 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps || npm install
-
-      - name: Build
-        run: npx vite build --base=./ || npm run build || true
+      - name: Build if Node project
+        run: |
+          if [ -f package.json ]; then
+            npm install --legacy-peer-deps || npm install
+            if grep -q "vite build" package.json || [ -f vite.config.ts ] || [ -f vite.config.js ]; then
+              npx vite build --base=./
+            else
+              npm run build || true
+            fi
+            if [ -d dist ]; then
+              echo "UPLOAD_DIR=./dist" >> $GITHUB_ENV
+            else
+              echo "UPLOAD_DIR=." >> $GITHUB_ENV
+            fi
+          else
+            echo "UPLOAD_DIR=." >> $GITHUB_ENV
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -41,7 +53,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: ${{ env.UPLOAD_DIR }}
 
       - name: Deploy to GitHub Pages
         id: deployment
